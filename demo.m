@@ -1,34 +1,31 @@
-% https://www.tensorflow.org/versions/r0.11/tutorials/word2vec/index.html
-% http://norvig.com/ngrams/count_1w.txt
-%%
+%% load and preprocess text data (text8)
+preproc
 
-%preproc;
+%corpus_file = 'text8'
+%MIN_WORD_COUNT = 50
+%file=[corpus_file,'_',num2str(MIN_WORD_COUNT),'.mat']; load(file)
 
-%%
+%% parameters
 e = 100;        % embedding size
 n = length(V);  % vocab size
-w = 5;          % window size
-neg = 5;        % # neg samples
+w = 7;          % window size
+neg = 10;        % # neg samples
 r = 0.025;      % learning rate
-epoch = 20;     % # epochs
+epoch = 100;     % # epochs
 m = round(w/2);
 t = [ones(1,w-1),zeros(1,neg*(w-1))];
 nn = neg*(w-1);
 
-%% initialize
-% init input embeddings (uniform)
+%% initialize input embeddings (uniform)
 W = rand(n,e)*2-1;
 
-% init output embeddings (trunc normal)
+%% init output embeddings (trunc normal)
 s = 1/sqrt(e);
 Z = normrnd(0,s,[1.5*n*e,1]);
 Z = Z(logical((Z>-s*2) .* (Z<s*2)));
 Z = reshape(Z(1:n*e),e,n);
 
-% init biases
-%B = zeros(n,1);
-
-%% samples
+%% sampling architecture
 A = fliplr(toeplitz(1:N,ones(1,w)));
 A = A(w:end,:);
 S = T(A);
@@ -37,34 +34,33 @@ N = N-w+1;
 %% train
 tic
 for iter=1:epoch
-    %U = sample_table(N,n,nn);
-    p=randperm(N);
-    i=1;
+    fprintf('\nEPOCH %d\n',iter)
+    p=randperm(N); i=1;
+    
+    % sample 1M (random) lines from corpus on each epoch
+    p=p(1:1000000);
+    
     for j=p
-        i=i+1;
-        if ~mod(i,100000),display(i);end
-        %% example updates for one sample
+        i=i+1; if ~mod(i,100000),fprintf('\tsampled %d lines\n',i);end
+        
+        %% forward update (one sample)
         v = S(j,:);
         k = v(m);
-        h = W(k,:)';                 % input (target/middle) word embedding
-        v(m)=[];                     % pos samples (context)
-        %u = U(j,:);                 % rand pick neg samples
-        u = randperm(n,nn);
+        h = W(k,:)';                % input (target/middle) word embedding
+        v(m)=[];                    % pos samples (context)
+        u = randperm(n,nn);         % rand pick neg samples
         q = [v,u];
         
         %% backprop updates
-        % delta
-        d = logsig(h'*Z(:,q))-t;
-        % input (target) layer
-        W(k,:) = W(k,:)-r*d*Z(:,q)';
-        % output (context) layer
-        Z(:,q) = Z(:,q)-r*h*d;
+        d = logsig(h'*Z(:,q))-t;    % delta
+        W(k,:)= W(k,:)-r*d*Z(:,q)'; % input (target) layer
+        Z(:,q) = Z(:,q)-r*h*d;      % output (context) layer
     end
-    file = ['W_d100w5n5e',num2str(iter),'.mat']
-    save(file,'W')
+    
+    %% save weights (each epoch)
+    file = ['W_d',num2str(e),'w',num2str(w),'n',num2str(neg),'e',num2str(iter),'.mat'];
+    save(file,'W');
+    fprintf('\tweights saved to %s\n',file)
     toc
 end
 
-%%
-%file = ['W_e100w5n5.mat']
-%save(file,'W')
