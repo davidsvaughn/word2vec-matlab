@@ -8,8 +8,8 @@ preproc
 %% parameters
 e = 100;        % embedding size
 n = length(V);  % vocab size
-w = 7;          % window size
-neg = 10;        % # neg samples
+w = 5;          % window size
+neg = 3;        % # neg samples
 r = 0.025;      % learning rate
 epoch = 100;     % # epochs
 m = round(w/2);
